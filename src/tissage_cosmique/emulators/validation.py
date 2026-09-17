@@ -105,7 +105,7 @@ def validate_against_computation(
     param_names
         Ordered parameter names (must match training).
     """
-    X_test, y_test = build_training_data(computation_fn, test_params, a_grid, param_names)
+    X_test, y_test = build_training_data(computation_fn, test_params, a_grid, param_names=param_names)
     return validate_emulator(emulator, X_test, y_test)
 
 

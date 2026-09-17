@@ -32,7 +32,7 @@ def swappable(fn: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(cosmo_params: dict[str, Any], a: np.ndarray) -> np.ndarray:
         entry = get_entry(fn)
         if entry is not None and entry.enabled and entry.emulator.is_fitted:
-            X = params_to_feature_matrix(cosmo_params, a, entry.param_names)
+            X = params_to_feature_matrix(cosmo_params, a, param_names=entry.param_names)
             return entry.emulator.predict(X)
         return fn(cosmo_params, a)
 

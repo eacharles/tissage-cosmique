@@ -32,7 +32,7 @@ def _make_param_samples(n: int, rng: np.random.Generator) -> list[dict]:
 def training_data():
     rng = np.random.default_rng(42)
     samples = _make_param_samples(30, rng)
-    X, y = build_training_data(comoving_angular_distance, samples, A_GRID, PARAM_NAMES)
+    X, y = build_training_data(comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES)
     return X, y, samples
 
 
@@ -62,19 +62,19 @@ class TestParamsToFeatureMatrix:
     def test_shape(self):
         params = {"Omega_c": 0.25, "h": 0.70, "sigma8": 0.81}
         a = np.linspace(0.2, 0.8, 20)
-        X = params_to_feature_matrix(params, a, PARAM_NAMES)
+        X = params_to_feature_matrix(params, a, param_names=PARAM_NAMES)
         assert X.shape == (20, len(PARAM_NAMES) + 1)
 
     def test_last_column_is_a(self):
         params = {"Omega_c": 0.25, "h": 0.70, "sigma8": 0.81}
         a = np.array([0.3, 0.5, 0.8])
-        X = params_to_feature_matrix(params, a, PARAM_NAMES)
+        X = params_to_feature_matrix(params, a, param_names=PARAM_NAMES)
         np.testing.assert_array_equal(X[:, -1], a)
 
     def test_param_columns_constant(self):
         params = {"Omega_c": 0.25, "h": 0.70, "sigma8": 0.81}
         a = np.array([0.3, 0.5, 0.8])
-        X = params_to_feature_matrix(params, a, PARAM_NAMES)
+        X = params_to_feature_matrix(params, a, param_names=PARAM_NAMES)
         for col in range(len(PARAM_NAMES)):
             assert len(set(X[:, col])) == 1
 
@@ -87,7 +87,7 @@ class TestGPEmulator:
 
     def test_predict_shape(self, fitted_emulator):
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
-        X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
         pred = fitted_emulator.predict(X)
         assert pred.shape == (len(A_GRID),)
 
@@ -96,7 +96,7 @@ class TestGPEmulator:
         test_samples = _make_param_samples(5, rng)
         for params in test_samples:
             truth = comoving_angular_distance({**params, **FIXED_PARAMS}, A_GRID)
-            X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+            X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
             pred = fitted_emulator.predict(X)
             large = truth > 100.0
             rel_err = np.abs(pred[large] - truth[large]) / truth[large]
@@ -104,7 +104,7 @@ class TestGPEmulator:
 
     def test_predict_with_std(self, fitted_emulator):
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
-        X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
         mean, std = fitted_emulator.predict_with_std(X)
         assert mean.shape == (len(A_GRID),)
         assert std.shape == (len(A_GRID),)
@@ -128,7 +128,7 @@ class TestGPEmulator:
         assert loaded.n_training_samples == fitted_emulator.n_training_samples
 
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
-        X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
         np.testing.assert_array_equal(
             fitted_emulator.predict(X),
             loaded.predict(X),

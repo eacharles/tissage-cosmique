@@ -38,7 +38,7 @@ def _make_param_samples(n: int, rng: np.random.Generator) -> list[dict]:
 def training_xy():
     rng = np.random.default_rng(42)
     samples = _make_param_samples(30, rng)
-    X, y = build_training_data(comoving_angular_distance, samples, A_GRID, PARAM_NAMES)
+    X, y = build_training_data(comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES)
     return X, y
 
 

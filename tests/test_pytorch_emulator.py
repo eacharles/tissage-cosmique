@@ -27,7 +27,7 @@ def _make_param_samples(n: int, rng: np.random.Generator) -> list[dict]:
 def training_xy():
     rng = np.random.default_rng(42)
     samples = _make_param_samples(30, rng)
-    return build_training_data(comoving_angular_distance, samples, A_GRID, PARAM_NAMES)
+    return build_training_data(comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES)
 
 
 @pytest.fixture(scope="module")
@@ -46,7 +46,7 @@ class TestPyTorchEmulator:
 
     def test_predict_shape(self, fitted_emulator):
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
-        X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
         pred = fitted_emulator.predict(X)
         assert pred.shape == (len(A_GRID),)
 
@@ -55,7 +55,7 @@ class TestPyTorchEmulator:
         test_samples = _make_param_samples(3, rng)
         for params in test_samples:
             truth = comoving_angular_distance({**params}, A_GRID)
-            X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+            X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
             pred = fitted_emulator.predict(X)
             large = truth > 100.0
             rel_err = np.abs(pred[large] - truth[large]) / truth[large]
@@ -76,7 +76,7 @@ class TestPyTorchEmulator:
         assert loaded.feature_names == fitted_emulator.feature_names
 
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
-        X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
         np.testing.assert_allclose(
             fitted_emulator.predict(X),
             loaded.predict(X),

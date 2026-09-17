@@ -41,7 +41,7 @@ def _make_param_samples(n: int, rng: np.random.Generator) -> list[dict]:
 def fitted_emulator():
     rng = np.random.default_rng(42)
     samples = _make_param_samples(30, rng)
-    X, y = build_training_data(comoving_angular_distance, samples, A_GRID, PARAM_NAMES)
+    X, y = build_training_data(comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES)
     emu = GPEmulator(feature_names=PARAM_NAMES + ["a"])
     emu.fit(X, y)
     return emu
@@ -108,7 +108,7 @@ class TestSwappable:
         compute = swappable(comoving_angular_distance)
         register(comoving_angular_distance, fitted_emulator, PARAM_NAMES)
         result = compute(TEST_PARAMS, A_GRID)
-        X = params_to_feature_matrix(TEST_PARAMS, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(TEST_PARAMS, A_GRID, param_names=PARAM_NAMES)
         expected = fitted_emulator.predict(X)
         np.testing.assert_array_equal(result, expected)
 
@@ -161,7 +161,7 @@ class TestAccuracy:
         register(comoving_angular_distance, fitted_emulator, PARAM_NAMES)
 
         swap_result = compute(TEST_PARAMS, A_GRID)
-        X = params_to_feature_matrix(TEST_PARAMS, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(TEST_PARAMS, A_GRID, param_names=PARAM_NAMES)
         direct_result = fitted_emulator.predict(X)
 
         np.testing.assert_array_equal(swap_result, direct_result)

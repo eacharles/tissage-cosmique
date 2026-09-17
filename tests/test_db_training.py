@@ -52,7 +52,9 @@ class TestQueryComputationResults:
         run_tracked_batch(comoving_angular_distance, samples, A_GRID)
 
         X_db, y_db = query_computation_results(PARAM_NAMES)
-        X_direct, y_direct = build_training_data(comoving_angular_distance, samples, A_GRID, PARAM_NAMES)
+        X_direct, y_direct = build_training_data(
+            comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES,
+        )
 
         assert X_db.shape == X_direct.shape
         assert y_db.shape == y_direct.shape

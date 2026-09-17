@@ -27,7 +27,7 @@ def _make_param_samples(n: int, rng: np.random.Generator) -> list[dict]:
 def training_xy():
     rng = np.random.default_rng(42)
     samples = _make_param_samples(30, rng)
-    return build_training_data(comoving_angular_distance, samples, A_GRID, PARAM_NAMES)
+    return build_training_data(comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES)
 
 
 @pytest.fixture(scope="module")
@@ -46,7 +46,7 @@ class TestSymbolicEmulator:
 
     def test_predict_shape(self, fitted_emulator):
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
-        X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
         pred = fitted_emulator.predict(X)
         assert pred.shape == (len(A_GRID),)
 
@@ -67,7 +67,7 @@ class TestSymbolicEmulator:
         assert loaded.metadata["best_expression"] == fitted_emulator.metadata["best_expression"]
 
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
-        X = params_to_feature_matrix(params, A_GRID, PARAM_NAMES)
+        X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
         np.testing.assert_array_equal(
             fitted_emulator.predict(X),
             loaded.predict(X),
