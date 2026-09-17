@@ -20,3 +20,5 @@ examples/.ipynb_checkpoints/
 *.joblib
 *.keras
 *.pkl
+docs/_build/
+docs/autoapi/
