@@ -17,3 +17,6 @@ htmlcov/
 .mypy_cache/
 src/tissage_cosmique/_version.py
 examples/.ipynb_checkpoints/
+*.joblib
+*.keras
+*.pkl
