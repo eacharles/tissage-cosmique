@@ -7,7 +7,7 @@ from typing import Any
 
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.preprocessing import StandardScaler
 
 from ..base import Emulator
@@ -36,35 +36,41 @@ class GPEmulator(Emulator):
         *,
         kernel: Any | None = None,
         n_restarts_optimizer: int = 5,
-        alpha: float = 1e-10,
+        alpha: float = 1e-6,
         normalize: bool = True,
     ) -> None:
         super().__init__(feature_names=feature_names)
-        self._kernel = kernel or (ConstantKernel() * RBF() + WhiteKernel(noise_level_bounds=(1e-12, 1e-2)))
+        self._kernel = kernel or (ConstantKernel() * RBF())
         self._gp = GaussianProcessRegressor(
             kernel=self._kernel,
             n_restarts_optimizer=n_restarts_optimizer,
             alpha=alpha,
-            normalize_y=True,
+            normalize_y=False,
         )
         self._normalize = normalize
         self._x_scaler: StandardScaler | None = StandardScaler() if normalize else None
+        self._y_mean: float = 0.0
+        self._y_std: float = 1.0
         self._training_score: float | None = None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         X_fit = X
         if self._x_scaler is not None:
             X_fit = self._x_scaler.fit_transform(X)
-        self._gp.fit(X_fit, y)
+        self._y_mean = float(np.mean(y))
+        self._y_std = float(np.std(y)) or 1.0
+        y_fit = (y - self._y_mean) / self._y_std
+        self._gp.fit(X_fit, y_fit)
         self._n_training_samples = len(y)
         self._is_fitted = True
-        self._training_score = float(self._gp.score(X_fit, y))
+        self._training_score = float(self._gp.score(X_fit, y_fit))
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         X_pred = X
         if self._x_scaler is not None:
             X_pred = self._x_scaler.transform(X)
-        return self._gp.predict(X_pred)
+        y_scaled = self._gp.predict(X_pred)
+        return y_scaled * self._y_std + self._y_mean
 
     def predict_with_std(self, X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Predict with uncertainty estimates.
@@ -79,7 +85,8 @@ class GPEmulator(Emulator):
         X_pred = X
         if self._x_scaler is not None:
             X_pred = self._x_scaler.transform(X)
-        return self._gp.predict(X_pred, return_std=True)
+        y_scaled, std_scaled = self._gp.predict(X_pred, return_std=True)
+        return y_scaled * self._y_std + self._y_mean, std_scaled * self._y_std
 
     def save(self, path: str | Path) -> None:
         import joblib
@@ -87,6 +94,8 @@ class GPEmulator(Emulator):
         data = {
             "gp": self._gp,
             "x_scaler": self._x_scaler,
+            "y_mean": self._y_mean,
+            "y_std": self._y_std,
             "feature_names": self.feature_names,
             "n_training_samples": self._n_training_samples,
             "is_fitted": self._is_fitted,
@@ -106,6 +115,8 @@ class GPEmulator(Emulator):
         )
         emu._gp = data["gp"]
         emu._x_scaler = data["x_scaler"]
+        emu._y_mean = data["y_mean"]
+        emu._y_std = data["y_std"]
         emu._n_training_samples = data["n_training_samples"]
         emu._is_fitted = data["is_fitted"]
         emu._training_score = data["training_score"]
