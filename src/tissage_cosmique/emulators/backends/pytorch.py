@@ -153,6 +153,91 @@ class PyTorchEmulator(Emulator):
         emu._training_loss = data["training_loss"]
         return emu
 
+    def invert(
+        self,
+        y_target: np.ndarray,
+        free_params: list[str],
+        fixed_params: dict[str, float | np.ndarray],
+        *,
+        x0: dict[str, float] | None = None,
+        bounds: dict[str, tuple[float, float]] | None = None,
+        n_steps: int = 1000,
+        lr: float = 0.01,
+    ) -> Any:
+        """Gradient-based inversion via PyTorch autograd."""
+        import torch
+
+        from ..inversion import InversionResult, _build_feature_matrix, _resolve_indices
+
+        feature_names = self.feature_names
+        if feature_names is None:
+            return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+
+        y_target = np.atleast_1d(y_target)
+        n_targets = len(y_target)
+        n_features = len(feature_names)
+
+        free_indices, _ = _resolve_indices(feature_names, free_params, fixed_params)
+        fixed_idx_val = {feature_names.index(k): v for k, v in fixed_params.items()}
+
+        if x0 is not None:
+            init = np.array([x0[p] for p in free_params], dtype=np.float32)
+        elif bounds is not None:
+            init = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params], dtype=np.float32)
+        else:
+            init = np.zeros(len(free_params), dtype=np.float32)
+
+        free_tensor = torch.tensor(init, requires_grad=True)
+        y_target_t = torch.tensor(y_target, dtype=torch.float32)
+        optimizer = torch.optim.Adam([free_tensor], lr=lr)
+        loss_fn = torch.nn.MSELoss()
+
+        self._model.eval()
+        for _ in range(n_steps):
+            X_np = _build_feature_matrix(
+                free_tensor.detach().numpy(), free_indices, fixed_idx_val, n_features, n_targets,
+            )
+            X_scaled = self._x_scaler.transform(X_np)
+            X_t = torch.tensor(X_scaled, dtype=torch.float32)
+            X_t.requires_grad_(True)  # noqa: FBT003
+
+            y_scaled = self._model(X_t).flatten()
+            y_pred_t = y_scaled * self._y_std + self._y_mean
+            loss = loss_fn(y_pred_t, y_target_t)
+
+            optimizer.zero_grad()
+            loss.backward()
+            with torch.no_grad():
+                g = X_t.grad
+                if g is not None:
+                    if n_targets > 1:
+                        free_tensor.grad = g[:, free_indices].mean(dim=0)
+                    else:
+                        free_tensor.grad = g[0, free_indices]
+            optimizer.step()
+
+            if bounds:
+                with torch.no_grad():
+                    for i, p in enumerate(free_params):
+                        if p in bounds:
+                            free_tensor[i].clamp_(bounds[p][0], bounds[p][1])
+
+        X_final = _build_feature_matrix(
+            free_tensor.detach().numpy(), free_indices, fixed_idx_val, n_features, n_targets,
+        )
+        y_pred = self.predict(X_final)
+        y_scale = max(float(np.abs(y_target).mean()), 1e-10)
+        rel_residual = float(np.sqrt(np.mean(((y_pred - y_target) / y_scale) ** 2)))
+
+        return InversionResult(
+            x_solution={p: float(free_tensor[i].item()) for i, p in enumerate(free_params)},
+            y_predicted=y_pred,
+            y_target=y_target,
+            residual=rel_residual,
+            success=rel_residual < 0.01,
+            message=f"PyTorch inversion completed in {n_steps} steps",
+        )
+
     @property
     def metadata(self) -> dict[str, Any]:
         result: dict[str, Any] = {

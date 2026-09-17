@@ -137,6 +137,82 @@ class TensorFlowEmulator(Emulator):
         emu._training_loss = data["training_loss"]
         return emu
 
+    def invert(
+        self,
+        y_target: np.ndarray,
+        free_params: list[str],
+        fixed_params: dict[str, float | np.ndarray],
+        *,
+        x0: dict[str, float] | None = None,
+        bounds: dict[str, tuple[float, float]] | None = None,
+        n_steps: int = 1000,
+        lr: float = 0.01,
+    ) -> Any:
+        """Gradient-based inversion via TensorFlow GradientTape."""
+        import tensorflow as tf
+
+        from ..inversion import InversionResult, _build_feature_matrix, _resolve_indices
+
+        feature_names = self.feature_names
+        if feature_names is None:
+            return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+
+        y_target = np.atleast_1d(y_target)
+        n_targets = len(y_target)
+        n_features = len(feature_names)
+
+        free_indices, _ = _resolve_indices(feature_names, free_params, fixed_params)
+        fixed_idx_val = {feature_names.index(k): v for k, v in fixed_params.items()}
+
+        if x0 is not None:
+            init = np.array([x0[p] for p in free_params], dtype=np.float32)
+        elif bounds is not None:
+            init = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params], dtype=np.float32)
+        else:
+            init = np.zeros(len(free_params), dtype=np.float32)
+
+        free_var = tf.Variable(init)
+        y_target_tf = tf.constant(y_target, dtype=tf.float32)
+        optimizer = tf.optimizers.Adam(learning_rate=lr)
+
+        for _ in range(n_steps):
+            with tf.GradientTape() as tape:
+                X_np = _build_feature_matrix(
+                    free_var.numpy(), free_indices, fixed_idx_val, n_features, n_targets,
+                )
+                X_scaled = self._x_scaler.transform(X_np).astype(np.float32)
+                X_tf = tf.constant(X_scaled)
+                y_scaled = tf.reshape(self._model(X_tf, training=False), [-1])
+                y_pred_tf = y_scaled * self._y_std + self._y_mean
+                loss = tf.reduce_mean((y_pred_tf - y_target_tf) ** 2)
+
+            grads = tape.gradient(loss, [free_var])
+            if grads[0] is not None:
+                optimizer.apply_gradients(zip(grads, [free_var]))
+
+            if bounds:
+                free_var.assign(tf.clip_by_value(
+                    free_var,
+                    [bounds[p][0] for p in free_params],
+                    [bounds[p][1] for p in free_params],
+                ))
+
+        X_final = _build_feature_matrix(
+            free_var.numpy(), free_indices, fixed_idx_val, n_features, n_targets,
+        )
+        y_pred = self.predict(X_final)
+        y_scale = max(float(np.abs(y_target).mean()), 1e-10)
+        rel_residual = float(np.sqrt(np.mean(((y_pred - y_target) / y_scale) ** 2)))
+
+        return InversionResult(
+            x_solution={p: float(free_var[i].numpy()) for i, p in enumerate(free_params)},
+            y_predicted=y_pred,
+            y_target=y_target,
+            residual=rel_residual,
+            success=rel_residual < 0.01,
+            message=f"TensorFlow inversion completed in {n_steps} steps",
+        )
+
     @property
     def metadata(self) -> dict[str, Any]:
         result: dict[str, Any] = {

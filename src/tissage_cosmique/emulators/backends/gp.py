@@ -122,6 +122,62 @@ class GPEmulator(Emulator):
         emu._training_score = data["training_score"]
         return emu
 
+    def invert(
+        self,
+        y_target: np.ndarray,
+        free_params: list[str],
+        fixed_params: dict[str, float | np.ndarray],
+        *,
+        x0: dict[str, float] | None = None,
+        bounds: dict[str, tuple[float, float]] | None = None,
+    ) -> Any:
+        """Uncertainty-weighted inversion using GP predicted std."""
+        from scipy.optimize import minimize as scipy_minimize
+
+        from ..inversion import InversionResult, _build_feature_matrix, _resolve_indices
+
+        feature_names = self.feature_names
+        if feature_names is None:
+            return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+
+        y_target = np.atleast_1d(y_target)
+        n_targets = len(y_target)
+        n_features = len(feature_names)
+
+        free_indices, _ = _resolve_indices(feature_names, free_params, fixed_params)
+        fixed_idx_val = {feature_names.index(k): v for k, v in fixed_params.items()}
+
+        if x0 is not None:
+            x0_arr = np.array([x0[p] for p in free_params])
+        elif bounds is not None:
+            x0_arr = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params])
+        else:
+            x0_arr = np.zeros(len(free_params))
+
+        scipy_bounds = [bounds[p] for p in free_params] if bounds else None
+
+        def objective(free_values: np.ndarray) -> float:
+            X = _build_feature_matrix(free_values, free_indices, fixed_idx_val, n_features, n_targets)
+            y_pred, y_std = self.predict_with_std(X)
+            y_std = np.maximum(y_std, 1e-10)
+            return float(np.sum(((y_pred - y_target) / y_std) ** 2))
+
+        result = scipy_minimize(objective, x0_arr, method="L-BFGS-B", bounds=scipy_bounds)
+
+        X_final = _build_feature_matrix(result.x, free_indices, fixed_idx_val, n_features, n_targets)
+        y_pred = self.predict(X_final)
+        y_scale = np.maximum(np.abs(y_target).mean(), 1e-10)
+        rel_residual = float(np.sqrt(np.mean(((y_pred - y_target) / y_scale) ** 2)))
+
+        return InversionResult(
+            x_solution={p: float(v) for p, v in zip(free_params, result.x)},
+            y_predicted=y_pred,
+            y_target=y_target,
+            residual=rel_residual,
+            success=bool(result.success),
+            message=str(result.message),
+        )
+
     @property
     def metadata(self) -> dict[str, Any]:
         result: dict[str, Any] = {

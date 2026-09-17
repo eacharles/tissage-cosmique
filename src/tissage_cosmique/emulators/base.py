@@ -65,6 +65,25 @@ class Emulator(ABC):
     def n_training_samples(self) -> int:
         return self._n_training_samples
 
+    def invert(
+        self,
+        y_target: np.ndarray,
+        free_params: list[str],
+        fixed_params: dict[str, float | np.ndarray],
+        *,
+        x0: dict[str, float] | None = None,
+        bounds: dict[str, tuple[float, float]] | None = None,
+    ) -> Any:
+        """Find free parameter values that reproduce target outputs.
+
+        Default implementation uses scipy.optimize.minimize. Backends may
+        override with specialized methods (gradients, uncertainty weighting,
+        symbolic algebra).
+        """
+        from .inversion import invert_minimize
+
+        return invert_minimize(self, y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+
     @property
     @abstractmethod
     def metadata(self) -> dict[str, Any]:

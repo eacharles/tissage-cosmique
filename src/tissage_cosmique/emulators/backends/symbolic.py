@@ -106,6 +106,91 @@ class SymbolicEmulator(Emulator):
         emu._best_expression = data["best_expression"]
         return emu
 
+    def invert(
+        self,
+        y_target: np.ndarray,
+        free_params: list[str],
+        fixed_params: dict[str, float | np.ndarray],
+        *,
+        x0: dict[str, float] | None = None,
+        bounds: dict[str, tuple[float, float]] | None = None,
+    ) -> Any:
+        """Symbolic inversion: try sympy.solve for single free param, else minimize."""
+        if len(free_params) == 1 and self._best_expression is not None:
+            try:
+                return self._sympy_invert(y_target, free_params, fixed_params, bounds)
+            except Exception:
+                pass
+        return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+
+    def _sympy_invert(
+        self,
+        y_target: np.ndarray,
+        free_params: list[str],
+        fixed_params: dict[str, float | np.ndarray],
+        bounds: dict[str, tuple[float, float]] | None,
+    ) -> Any:
+        import sympy
+
+        from ..inversion import InversionResult
+
+        feature_names = self.feature_names or []
+        expr = sympy.sympify(self._best_expression)
+        symbols = {str(s): s for s in expr.free_symbols}
+
+        free_name = free_params[0]
+        free_sym = symbols.get(free_name)
+        if free_sym is None:
+            raise ValueError(f"Symbol {free_name} not found in expression")
+
+        for name, val in fixed_params.items():
+            if name in symbols:
+                arr = np.asarray(val)
+                scalar_val = float(arr.flat[0]) if arr.ndim > 0 else float(arr)
+                expr = expr.subs(symbols[name], scalar_val)
+
+        y_val = float(y_target[0])
+        solutions = sympy.solve(expr - y_val, free_sym)
+
+        if not solutions:
+            raise ValueError("sympy.solve found no solutions")
+
+        best = None
+        for sol in solutions:
+            sol_f = complex(sol)
+            if sol_f.imag != 0:
+                continue
+            val = sol_f.real
+            if bounds and free_name in bounds:
+                lo, hi = bounds[free_name]
+                if not (lo <= val <= hi):
+                    continue
+            best = val
+            break
+
+        if best is None:
+            best = float(solutions[0])
+
+        from ..inversion import _build_feature_matrix, _resolve_indices
+
+        free_indices, _ = _resolve_indices(feature_names, free_params, fixed_params)
+        fixed_idx_val = {feature_names.index(k): v for k, v in fixed_params.items()}
+        X = _build_feature_matrix(
+            np.array([best]), free_indices, fixed_idx_val, len(feature_names), len(y_target),
+        )
+        y_pred = self.predict(X)
+        y_scale = max(float(np.abs(y_target).mean()), 1e-10)
+        rel_residual = float(np.sqrt(np.mean(((y_pred - y_target) / y_scale) ** 2)))
+
+        return InversionResult(
+            x_solution={free_name: best},
+            y_predicted=y_pred,
+            y_target=y_target,
+            residual=rel_residual,
+            success=True,
+            message="Symbolic inversion via sympy.solve",
+        )
+
     @property
     def metadata(self) -> dict[str, Any]:
         result: dict[str, Any] = {

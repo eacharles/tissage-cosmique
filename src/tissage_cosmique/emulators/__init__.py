@@ -4,6 +4,7 @@ from .backends.symbolic import SymbolicEmulator
 from .backends.tensorflow import TensorFlowEmulator
 from .base import Emulator
 from .db_training import query_computation_results, run_tracked_batch
+from .inversion import InversionResult, invert_minimize
 from .training import build_training_data, params_to_feature_matrix
 from .validation import (
     CalibrationResult,
@@ -24,6 +25,8 @@ __all__ = [
     "params_to_feature_matrix",
     "query_computation_results",
     "run_tracked_batch",
+    "InversionResult",
+    "invert_minimize",
     "ValidationResult",
     "CalibrationResult",
     "validate_emulator",
