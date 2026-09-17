@@ -2,7 +2,9 @@ import asyncio
 
 import pytest
 
+import tisserande.db  # noqa: F401 — registers tisserande tables with Base.metadata
 from tissage_cosmique.db.base import Base, close_db, init_db
+from tisserande.tracking.decorator import reset as reset_tracking
 
 DB_URL = "sqlite+aiosqlite://"
 
@@ -22,4 +24,5 @@ def _setup_db():
 
     asyncio.run(_create_tables())
     yield
+    reset_tracking()
     asyncio.run(close_db())

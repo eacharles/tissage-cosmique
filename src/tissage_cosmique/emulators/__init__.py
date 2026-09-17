@@ -3,6 +3,7 @@ from .backends.pytorch import PyTorchEmulator
 from .backends.symbolic import SymbolicEmulator
 from .backends.tensorflow import TensorFlowEmulator
 from .base import Emulator
+from .db_training import query_computation_results, run_tracked_batch
 from .training import build_training_data, params_to_feature_matrix
 from .validation import (
     CalibrationResult,
@@ -21,6 +22,8 @@ __all__ = [
     "SymbolicEmulator",
     "build_training_data",
     "params_to_feature_matrix",
+    "query_computation_results",
+    "run_tracked_batch",
     "ValidationResult",
     "CalibrationResult",
     "validate_emulator",
