@@ -1,0 +1,181 @@
+[project]
+name = "tissage-cosmique"
+description = "Cosmological computations with provenance tracking and emulator support"
+license = { file = "LICENSE" }
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: POSIX",
+    "Typing :: Typed",
+]
+requires-python = ">=3.13"
+dynamic = ["version"]
+authors = [
+    { name = "Eric Charles", email = "echarles@slac.stanford.edu" },
+]
+
+dependencies = [
+    "tisserande",
+    "macon[db]",
+]
+
+
+[project.optional-dependencies]
+pyccl = ["pyccl"]
+
+emulators = ["scikit-learn", "numpy"]
+
+server = [
+    "macon[server]",
+]
+
+client = [
+    "macon[client]",
+]
+
+dev = [
+    "tissage-cosmique[emulators]",
+    "tissage-cosmique[server]",
+    "tissage-cosmique[client]",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov>=6.0.0",
+    "pytest-timeout>=2.3.1",
+    "mypy",
+    "ruff>=0.8.0",
+    "pylint",
+    "types-pyyaml>=6.0.12.20240917",
+]
+
+docs = [
+    "nbsphinx",
+    "sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx_rtd_theme",
+    "sphinx-autoapi",
+]
+
+all = [
+    "tissage-cosmique[pyccl]",
+    "tissage-cosmique[server]",
+    "tissage-cosmique[client]",
+    "tissage-cosmique[dev]",
+    "tissage-cosmique[docs]",
+]
+
+
+[project.scripts]
+tissage-cosmique-local = "tissage_cosmique.cli.local.top:cli"
+tissage-cosmique-server = "tissage_cosmique.cli.server.top:serve"
+
+
+[project.urls]
+Source = "https://github.com/eacharles/tissage-cosmique"
+
+[build-system]
+requires = ["setuptools>=62", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "src/tissage_cosmique/_version.py"
+
+[tool.coverage.run]
+parallel = true
+source = ["tissage_cosmique"]
+
+[tool.coverage.paths]
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "unexpected",
+    "as uexc:",
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+
+[tool.ruff]
+exclude = [
+    "__init__.py",
+]
+line-length = 110
+target-version = "py313"
+
+[tool.ruff.lint]
+ignore = [
+    "COM812",
+    "N802",
+    "N803",
+    "N806",
+    "N812",
+    "N813",
+    "N815",
+    "N816",
+    "UP047",
+]
+select = [
+    "E",
+    "F",
+    "N",
+    "W",
+    "COM",
+    "FBT",
+    "UP",
+    "ASYNC",
+]
+extend-select = [
+    "RUF100",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tissage_cosmique", "tests"]
+
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 110
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "error",
+]
+python_files = ["tests/*.py", "tests/*/*.py"]
+python_classes = ["Test"]
+addopts = [
+    "--cov=src",
+    "--cov-report=html",
+]
+
+[tool.mypy]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+local_partial_types = true
+no_implicit_reexport = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_ignores = true
+plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
+
+[tool.pylint.'MESSAGES CONTROL']
+max-line-length = 120
+disable = "W0718, W1203, C0116, C0114, C0103, C0302, C0415, W0603, R0902, R0903, R0911, R0912, R0913, R0917, R0914, R0915, R0801, R0904, R1735"
