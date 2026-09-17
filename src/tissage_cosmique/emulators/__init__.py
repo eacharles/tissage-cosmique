@@ -1,4 +1,7 @@
 from .backends.gp import GPEmulator
+from .backends.pytorch import PyTorchEmulator
+from .backends.symbolic import SymbolicEmulator
+from .backends.tensorflow import TensorFlowEmulator
 from .base import Emulator
 from .training import build_training_data, params_to_feature_matrix
 from .validation import (
@@ -13,6 +16,9 @@ from .validation import (
 __all__ = [
     "Emulator",
     "GPEmulator",
+    "TensorFlowEmulator",
+    "PyTorchEmulator",
+    "SymbolicEmulator",
     "build_training_data",
     "params_to_feature_matrix",
     "ValidationResult",
