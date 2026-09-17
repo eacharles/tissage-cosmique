@@ -24,6 +24,7 @@ authors = [
 dependencies = [
     "tisserande",
     "macon[db]",
+    "numpy",
 ]
 
 
