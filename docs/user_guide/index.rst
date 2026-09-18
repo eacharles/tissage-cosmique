@@ -7,5 +7,8 @@ User Guide
    architecture
    computations
    emulators
+   latent_space
+   inversion
    hot_swap
+   dashboard
    configuration
