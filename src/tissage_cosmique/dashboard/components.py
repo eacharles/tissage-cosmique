@@ -19,10 +19,10 @@ def make_data_table(
 ) -> Any:
     """Create a sortable, filterable Dash DataTable."""
     if df.empty:
-        return dash_table.DataTable(id=table_id, data=[], columns=[])  # type: ignore[attr-defined]
+        return dash_table.DataTable(id=table_id, data=[], columns=[])
 
     columns = [{"name": c, "id": c} for c in df.columns]
-    return dash_table.DataTable(  # type: ignore[attr-defined]
+    return dash_table.DataTable(
         id=table_id,
         data=df.to_dict("records"),
         columns=columns,
