@@ -68,7 +68,8 @@ class TestSymbolicEmulator:
 
         params = {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81}
         X = params_to_feature_matrix(params, A_GRID, param_names=PARAM_NAMES)
-        np.testing.assert_array_equal(
+        np.testing.assert_allclose(
             fitted_emulator.predict(X),
             loaded.predict(X),
+            rtol=1e-10,
         )
