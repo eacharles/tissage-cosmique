@@ -1,4 +1,6 @@
 from .backends.gp import GPEmulator
+from .codecs import AutoencoderCodec, Codec, PCACodec
+from .latent import LatentEmulator
 from .backends.pytorch import PyTorchEmulator
 from .backends.symbolic import SymbolicEmulator
 from .backends.tensorflow import TensorFlowEmulator
@@ -33,4 +35,8 @@ __all__ = [
     "validate_against_computation",
     "cross_validate",
     "check_calibration",
+    "Codec",
+    "PCACodec",
+    "AutoencoderCodec",
+    "LatentEmulator",
 ]
