@@ -25,19 +25,20 @@ dependencies = [
     "tisserande",
     "macon[db]",
     "numpy",
+    "uuid_utils",
 ]
 
 
 [project.optional-dependencies]
 pyccl = ["pyccl"]
 
-emulators = ["scikit-learn", "numpy", "joblib"]
+emulators = ["scikit-learn", "joblib", "scipy"]
 
-tensorflow = ["tensorflow", "joblib"]
+tensorflow = ["tensorflow", "scikit-learn", "joblib"]
 
-pytorch = ["torch", "joblib"]
+pytorch = ["torch", "scikit-learn", "joblib"]
 
-symbolic = ["pysr", "joblib"]
+symbolic = ["pysr", "scikit-learn", "joblib"]
 
 dashboard = ["dash", "plotly", "pandas"]
 
@@ -73,6 +74,11 @@ docs = [
 
 all = [
     "tissage-cosmique[pyccl]",
+    "tissage-cosmique[emulators]",
+    "tissage-cosmique[tensorflow]",
+    "tissage-cosmique[pytorch]",
+    "tissage-cosmique[symbolic]",
+    "tissage-cosmique[dashboard]",
     "tissage-cosmique[server]",
     "tissage-cosmique[client]",
     "tissage-cosmique[dev]",
@@ -193,6 +199,10 @@ warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_ignores = true
 plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tissage_cosmique.dashboard.*"
+ignore_errors = true
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 120
