@@ -88,25 +88,80 @@ class TestPyTorchInversionSingleTarget:
 
 
 class TestInversionWithBoundsOnly:
+    """Test all inversion paths with bounds but no x0 (uses midpoint)."""
 
-    def test_invert_with_bounds_no_x0(self):
+    @pytest.fixture()
+    def _training_data(self):
         rng = np.random.default_rng(42)
         samples = _make_samples(30, rng)
-        X, y = build_training_data(
+        return build_training_data(
             comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES,
         )
-        emu = GPEmulator(feature_names=PARAM_NAMES + ["a"])
-        emu.fit(X, y)
 
-        truth = comoving_angular_distance(
+    @pytest.fixture()
+    def _target(self):
+        return comoving_angular_distance(
             {"Omega_c": 0.27, "h": 0.68, "sigma8": 0.81, **FIXED}, A_GRID,
         )
+
+    def test_generic_invert_bounds_only(self, _training_data, _target):
         from tissage_cosmique.emulators import invert_minimize
 
+        X, y = _training_data
+        emu = GPEmulator(feature_names=PARAM_NAMES + ["a"])
+        emu.fit(X, y)
         result = invert_minimize(
-            emu, truth,
+            emu, _target,
             free_params=["Omega_c"],
             fixed_params={"h": 0.68, "sigma8": 0.81, "a": A_GRID},
             bounds={"Omega_c": (0.20, 0.35)},
+        )
+        assert "Omega_c" in result.x_solution
+
+    def test_gp_invert_bounds_only(self, _training_data, _target):
+        X, y = _training_data
+        emu = GPEmulator(feature_names=PARAM_NAMES + ["a"])
+        emu.fit(X, y)
+        result = emu.invert(
+            _target,
+            free_params=["Omega_c"],
+            fixed_params={"h": 0.68, "sigma8": 0.81, "a": A_GRID},
+            bounds={"Omega_c": (0.20, 0.35)},
+        )
+        assert "Omega_c" in result.x_solution
+
+    def test_pytorch_invert_bounds_only(self, _training_data, _target):
+        pytest.importorskip("torch")
+        from tissage_cosmique.emulators import PyTorchEmulator
+
+        X, y = _training_data
+        emu = PyTorchEmulator(
+            feature_names=PARAM_NAMES + ["a"], hidden_layers=[32, 32], n_epochs=200, seed=42,
+        )
+        emu.fit(X, y)
+        result = emu.invert(
+            _target,
+            free_params=["Omega_c"],
+            fixed_params={"h": 0.68, "sigma8": 0.81, "a": A_GRID},
+            bounds={"Omega_c": (0.20, 0.35)},
+            n_steps=200,
+        )
+        assert "Omega_c" in result.x_solution
+
+    def test_tensorflow_invert_bounds_only(self, _training_data, _target):
+        pytest.importorskip("tensorflow")
+        from tissage_cosmique.emulators import TensorFlowEmulator
+
+        X, y = _training_data
+        emu = TensorFlowEmulator(
+            feature_names=PARAM_NAMES + ["a"], hidden_layers=[32, 32], n_epochs=200, seed=42,
+        )
+        emu.fit(X, y)
+        result = emu.invert(
+            _target,
+            free_params=["Omega_c"],
+            fixed_params={"h": 0.68, "sigma8": 0.81, "a": A_GRID},
+            bounds={"Omega_c": (0.20, 0.35)},
+            n_steps=200,
         )
         assert "Omega_c" in result.x_solution
