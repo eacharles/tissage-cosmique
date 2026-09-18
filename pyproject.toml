@@ -30,7 +30,7 @@ dependencies = [
 
 
 [project.optional-dependencies]
-pyccl = ["pyccl"]
+pyccl = ["pyccl", "camb"]
 
 emulators = ["scikit-learn", "joblib", "scipy"]
 
