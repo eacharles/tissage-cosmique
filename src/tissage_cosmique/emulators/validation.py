@@ -64,7 +64,7 @@ def validate_emulator(
         rel_errors = abs_errors[nonzero] / np.abs(y_test[nonzero])
         mean_rel = float(np.mean(rel_errors))
         max_rel = float(np.max(rel_errors))
-    else:
+    else:  # pragma: no cover
         mean_rel = 0.0
         max_rel = 0.0
 
@@ -206,7 +206,7 @@ def check_calibration(
     nonzero_err = abs_errors[std > 0]
     if not unexpected(len(nonzero_std) <= 1):
         corr = float(np.corrcoef(nonzero_std, nonzero_err)[0, 1])
-    else:
+    else:  # pragma: no cover
         corr = 0.0
 
     return CalibrationResult(
