@@ -99,6 +99,10 @@ write_to = "src/tissage_cosmique/_version.py"
 [tool.coverage.run]
 parallel = true
 source = ["tissage_cosmique"]
+omit = [
+    "src/tissage_cosmique/dashboard/*",
+    "src/tissage_cosmique/cli/dashboard/*",
+]
 
 [tool.coverage.paths]
 source = ["src"]
