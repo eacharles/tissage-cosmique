@@ -39,6 +39,7 @@ class TensorFlowEmulator(Emulator):
         batch_size: int = 32,
         learning_rate: float = 1e-3,
         validation_split: float = 0.1,
+        seed: int | None = None,
     ) -> None:
         super().__init__(feature_names=feature_names)
         self._hidden_layers = hidden_layers or [64, 64]
@@ -46,6 +47,7 @@ class TensorFlowEmulator(Emulator):
         self._batch_size = batch_size
         self._learning_rate = learning_rate
         self._validation_split = validation_split
+        self._seed = seed
         self._x_scaler = StandardScaler()
         self._y_mean: float = 0.0
         self._y_std: float = 1.0
@@ -67,6 +69,12 @@ class TensorFlowEmulator(Emulator):
         return model
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+        if self._seed is not None:
+            import tensorflow as tf
+
+            tf.random.set_seed(self._seed)
+            np.random.seed(self._seed)
+
         X_scaled = self._x_scaler.fit_transform(X)
         self._y_mean = float(np.mean(y))
         self._y_std = float(np.std(y)) or 1.0
@@ -107,6 +115,7 @@ class TensorFlowEmulator(Emulator):
             "batch_size": self._batch_size,
             "learning_rate": self._learning_rate,
             "validation_split": self._validation_split,
+            "seed": self._seed,
             "n_training_samples": self._n_training_samples,
             "is_fitted": self._is_fitted,
             "training_loss": self._training_loss,
@@ -127,6 +136,7 @@ class TensorFlowEmulator(Emulator):
             batch_size=data["batch_size"],
             learning_rate=data["learning_rate"],
             validation_split=data["validation_split"],
+            seed=data.get("seed"),
         )
         emu._x_scaler = data["x_scaler"]
         emu._y_mean = data["y_mean"]

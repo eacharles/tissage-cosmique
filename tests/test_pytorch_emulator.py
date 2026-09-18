@@ -33,7 +33,7 @@ def training_xy():
 @pytest.fixture(scope="module")
 def fitted_emulator(training_xy):
     X, y = training_xy
-    emu = PyTorchEmulator(feature_names=PARAM_NAMES + ["a"], n_epochs=200, hidden_layers=[32, 32])
+    emu = PyTorchEmulator(feature_names=PARAM_NAMES + ["a"], n_epochs=200, hidden_layers=[32, 32], seed=42)
     emu.fit(X, y)
     return emu
 

@@ -116,7 +116,7 @@ class TestPyTorchInversion:
             comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES,
         )
         emu = PyTorchEmulator(
-            feature_names=PARAM_NAMES + ["a"], hidden_layers=[64, 64], n_epochs=300,
+            feature_names=PARAM_NAMES + ["a"], hidden_layers=[64, 64], n_epochs=300, seed=42,
         )
         emu.fit(X, y)
 
@@ -145,7 +145,7 @@ class TestTensorFlowInversion:
             comoving_angular_distance, samples, A_GRID, param_names=PARAM_NAMES,
         )
         emu = TensorFlowEmulator(
-            feature_names=PARAM_NAMES + ["a"], hidden_layers=[64, 64], n_epochs=300,
+            feature_names=PARAM_NAMES + ["a"], hidden_layers=[64, 64], n_epochs=300, seed=42,
         )
         emu.fit(X, y)
 
