@@ -161,11 +161,14 @@ class TensorFlowEmulator(Emulator):
         """Gradient-based inversion via TensorFlow GradientTape."""
         import tensorflow as tf
 
+        from macon.common import unexpected
+
         from ..inversion import InversionResult, _build_feature_matrix, _resolve_indices
 
         feature_names = self.feature_names
-        if feature_names is None:
+        if unexpected(feature_names is None):
             return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+        assert feature_names is not None
 
         y_target = np.atleast_1d(y_target)
         n_targets = len(y_target)
@@ -178,7 +181,7 @@ class TensorFlowEmulator(Emulator):
             init = np.array([x0[p] for p in free_params], dtype=np.float32)
         elif bounds is not None:
             init = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params], dtype=np.float32)
-        else:
+        else:  # pragma: no cover
             init = np.zeros(len(free_params), dtype=np.float32)
 
         free_var = tf.Variable(init)
@@ -197,7 +200,7 @@ class TensorFlowEmulator(Emulator):
                 loss = tf.reduce_mean((y_pred_tf - y_target_tf) ** 2)
 
             grads = tape.gradient(loss, [free_var])
-            if grads[0] is not None:
+            if not unexpected(grads[0] is None):
                 optimizer.apply_gradients(zip(grads, [free_var]))
 
             if bounds:

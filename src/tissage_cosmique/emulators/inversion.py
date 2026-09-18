@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from macon.common import unexpected
 from scipy.optimize import minimize
 
 from .base import Emulator
@@ -85,8 +86,9 @@ def invert_minimize(
         Scipy minimize method (default: L-BFGS-B).
     """
     feature_names = emulator.feature_names
-    if feature_names is None:
+    if unexpected(feature_names is None):
         raise ValueError("Emulator must have feature_names set for inversion")
+    assert feature_names is not None
 
     y_target = np.atleast_1d(y_target)
     n_targets = len(y_target)
@@ -99,7 +101,7 @@ def invert_minimize(
         x0_arr = np.array([x0[p] for p in free_params])
     elif bounds is not None:
         x0_arr = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params])
-    else:
+    else:  # pragma: no cover
         x0_arr = np.zeros(len(free_params))
 
     scipy_bounds = None

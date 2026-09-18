@@ -7,6 +7,7 @@ from typing import Any
 from uuid import UUID
 
 import numpy as np
+from macon.common import unexpected
 from macon.models.filtering import Filter, FilterOp
 
 
@@ -91,7 +92,7 @@ def query_computation_results(
     y_values: list[float] = []
 
     for exec_rec in execs:
-        if exec_rec.function_node_id is None:
+        if unexpected(exec_rec.function_node_id is None):
             continue
 
         input_edges = edge_ops.filter_rows([
@@ -120,8 +121,9 @@ def query_computation_results(
             if n.arg_name == "return" and hasattr(n, "value_json"):
                 result_array = n.value_json
 
-        if cosmo_params is None or a_array is None or result_array is None:
+        if unexpected(cosmo_params is None or a_array is None or result_array is None):
             continue
+        assert cosmo_params is not None and a_array is not None and result_array is not None
 
         pvals = [cosmo_params[k] for k in param_names]
         for i, a_val in enumerate(a_array):

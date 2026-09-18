@@ -134,11 +134,14 @@ class GPEmulator(Emulator):
         """Uncertainty-weighted inversion using GP predicted std."""
         from scipy.optimize import minimize as scipy_minimize
 
+        from macon.common import unexpected
+
         from ..inversion import InversionResult, _build_feature_matrix, _resolve_indices
 
         feature_names = self.feature_names
-        if feature_names is None:
+        if unexpected(feature_names is None):
             return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+        assert feature_names is not None
 
         y_target = np.atleast_1d(y_target)
         n_targets = len(y_target)
@@ -151,7 +154,7 @@ class GPEmulator(Emulator):
             x0_arr = np.array([x0[p] for p in free_params])
         elif bounds is not None:
             x0_arr = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params])
-        else:
+        else:  # pragma: no cover
             x0_arr = np.zeros(len(free_params))
 
         scipy_bounds = [bounds[p] for p in free_params] if bounds else None

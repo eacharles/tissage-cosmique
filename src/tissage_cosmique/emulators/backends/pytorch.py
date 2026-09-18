@@ -175,11 +175,14 @@ class PyTorchEmulator(Emulator):
         """Gradient-based inversion via PyTorch autograd."""
         import torch
 
+        from macon.common import unexpected
+
         from ..inversion import InversionResult, _build_feature_matrix, _resolve_indices
 
         feature_names = self.feature_names
-        if feature_names is None:
+        if unexpected(feature_names is None):
             return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
+        assert feature_names is not None
 
         y_target = np.atleast_1d(y_target)
         n_targets = len(y_target)
@@ -192,7 +195,7 @@ class PyTorchEmulator(Emulator):
             init = np.array([x0[p] for p in free_params], dtype=np.float32)
         elif bounds is not None:
             init = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params], dtype=np.float32)
-        else:
+        else:  # pragma: no cover
             init = np.zeros(len(free_params), dtype=np.float32)
 
         free_tensor = torch.tensor(init, requires_grad=True)
@@ -217,11 +220,13 @@ class PyTorchEmulator(Emulator):
             loss.backward()
             with torch.no_grad():
                 g = X_t.grad
-                if g is not None:
-                    if n_targets > 1:
-                        free_tensor.grad = g[:, free_indices].mean(dim=0)
-                    else:
-                        free_tensor.grad = g[0, free_indices]
+                if unexpected(g is None):
+                    continue
+                assert g is not None
+                if n_targets > 1:
+                    free_tensor.grad = g[:, free_indices].mean(dim=0)
+                else:
+                    free_tensor.grad = g[0, free_indices]
             optimizer.step()
 
             if bounds:

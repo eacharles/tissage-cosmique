@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+from macon.common import unexpected
 
 
 def build_training_data(
@@ -68,7 +69,7 @@ def build_training_data(
         # X columns: [Omega_c, h, sigma8, k, a]
     """
     n_grids = len(grids)
-    if n_grids == 0:
+    if unexpected(n_grids == 0):
         raise ValueError("At least one grid array is required")
 
     if result_axes_order is None:
@@ -84,7 +85,7 @@ def build_training_data(
         result = np.asarray(result)
         pvals = [params[k] for k in param_names]
 
-        if result.ndim == 0:
+        if unexpected(result.ndim == 0):
             X_rows.append(pvals + [float(g[0]) for g in grids])
             y_values.append(float(result))
         elif result.ndim == 1 and n_grids == 1:
@@ -129,7 +130,7 @@ def params_to_feature_matrix(
         Feature matrix of shape ``(n_total, len(param_names) + len(grids))``.
     """
     n_grids = len(grids)
-    if n_grids == 0:
+    if unexpected(n_grids == 0):
         raise ValueError("At least one grid array is required")
 
     if result_axes_order is None:

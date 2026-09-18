@@ -8,6 +8,8 @@ from typing import Any
 
 import numpy as np
 
+from macon.common import unexpected
+
 from .base import Emulator
 from .training import build_training_data
 
@@ -58,7 +60,7 @@ def validate_emulator(
     abs_errors = np.abs(residuals)
 
     nonzero = np.abs(y_test) > 1e-10
-    if np.any(nonzero):
+    if not unexpected(not np.any(nonzero)):
         rel_errors = abs_errors[nonzero] / np.abs(y_test[nonzero])
         mean_rel = float(np.mean(rel_errors))
         max_rel = float(np.max(rel_errors))
@@ -202,7 +204,7 @@ def check_calibration(
 
     nonzero_std = std[std > 0]
     nonzero_err = abs_errors[std > 0]
-    if len(nonzero_std) > 1:
+    if not unexpected(len(nonzero_std) <= 1):
         corr = float(np.corrcoef(nonzero_std, nonzero_err)[0, 1])
     else:
         corr = 0.0

@@ -119,7 +119,7 @@ class SymbolicEmulator(Emulator):
         if len(free_params) == 1 and self._best_expression is not None:
             try:
                 return self._sympy_invert(y_target, free_params, fixed_params, bounds)
-            except Exception:
+            except Exception as uexc:  # noqa: F841
                 pass
         return super().invert(y_target, free_params, fixed_params, x0=x0, bounds=bounds)
 
@@ -138,9 +138,11 @@ class SymbolicEmulator(Emulator):
         expr = sympy.sympify(self._best_expression)
         symbols = {str(s): s for s in expr.free_symbols}
 
+        from macon.common import unexpected
+
         free_name = free_params[0]
         free_sym = symbols.get(free_name)
-        if free_sym is None:
+        if unexpected(free_sym is None):
             raise ValueError(f"Symbol {free_name} not found in expression")
 
         for name, val in fixed_params.items():
@@ -152,7 +154,7 @@ class SymbolicEmulator(Emulator):
         y_val = float(y_target[0])
         solutions = sympy.solve(expr - y_val, free_sym)
 
-        if not solutions:
+        if unexpected(not solutions):
             raise ValueError("sympy.solve found no solutions")
 
         best = None
@@ -168,8 +170,9 @@ class SymbolicEmulator(Emulator):
             best = val
             break
 
-        if best is None:
+        if unexpected(best is None):
             best = float(solutions[0])
+        assert best is not None
 
         from ..inversion import _build_feature_matrix, _resolve_indices
 

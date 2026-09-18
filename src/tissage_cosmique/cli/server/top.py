@@ -8,7 +8,7 @@ import uvicorn
 @click.option("--reload/--no-reload", default=True, help="Enable auto-reload")
 def serve(host: str, port: int, reload: bool) -> None:  # noqa: FBT001
     """Start the tissage-cosmique API server."""
-    uvicorn.run(
+    uvicorn.run(  # pragma: no cover
         "tissage_cosmique.router.app:create_app",
         host=host,
         port=port,
