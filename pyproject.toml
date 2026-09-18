@@ -39,6 +39,8 @@ pytorch = ["torch", "joblib"]
 
 symbolic = ["pysr", "joblib"]
 
+dashboard = ["dash", "plotly", "pandas"]
+
 server = [
     "macon[server]",
 ]
@@ -81,6 +83,7 @@ all = [
 [project.scripts]
 tissage-cosmique-local = "tissage_cosmique.cli.local.top:cli"
 tissage-cosmique-server = "tissage_cosmique.cli.server.top:serve"
+tissage-cosmique-dashboard = "tissage_cosmique.cli.dashboard.top:dashboard"
 
 
 [project.urls]
