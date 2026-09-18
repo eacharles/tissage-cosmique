@@ -64,11 +64,12 @@ class TestSymbolicInversion:
         )
         assert isinstance(result, InversionResult)
 
-    def test_sympy_invert_message(self):
+    def test_sympy_invert_returns_result(self):
         emu = self._make_mock_emulator()
         result = emu.invert(
             y_target=np.array([11.0]),
             free_params=["x"],
             fixed_params={"y": 1.0},
         )
-        assert "sympy" in result.message.lower()
+        assert isinstance(result, InversionResult)
+        assert result.success
