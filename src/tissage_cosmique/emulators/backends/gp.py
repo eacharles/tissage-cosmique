@@ -154,7 +154,7 @@ class GPEmulator(Emulator):
             x0_arr = np.array([x0[p] for p in free_params])
         elif bounds is not None:
             x0_arr = np.array([(bounds[p][0] + bounds[p][1]) / 2 for p in free_params])
-        else:  # pragma: no cover
+        else:  # pragma: no cover — inversion without x0 or bounds would start from zeros, unlikely to converge
             x0_arr = np.zeros(len(free_params))
 
         scipy_bounds = [bounds[p] for p in free_params] if bounds else None
