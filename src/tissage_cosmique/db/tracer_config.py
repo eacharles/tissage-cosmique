@@ -19,6 +19,8 @@ class TracerConfigTable(Base):
     id_: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=_uuid7)
     name: Mapped[str] = mapped_column(String(255), unique=True)
     tracer_type: Mapped[str] = mapped_column(String(50))
+
+    # Static arrays
     dndz_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
     dndz_nz: Mapped[list | None] = mapped_column(JSON, nullable=True)
     bias_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
@@ -27,6 +29,24 @@ class TracerConfigTable(Base):
     ia_bias_az: Mapped[list | None] = mapped_column(JSON, nullable=True)
     mag_bias_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
     mag_bias_sz: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+    # Parametric nuisance models
+    bias_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    bias_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    ia_bias_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    ia_bias_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    mag_bias_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    mag_bias_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # Functional nuisance models (z-nodes)
+    bias_nodes_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    bias_nodes_amp: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    ia_bias_nodes_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    ia_bias_nodes_amp: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    mag_bias_nodes_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    mag_bias_nodes_amp: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+    # Flags and scalars
     has_shear: Mapped[bool] = mapped_column(Boolean, default=True)
     has_rsd: Mapped[bool] = mapped_column(Boolean, default=False)
     use_A_ia: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -4,6 +4,8 @@ from typing import Any
 
 import numpy as np
 
+from .nuisance import evaluate_nuisance
+
 
 _TRACER_TYPE_MAP = {
     "weak_lensing": "_make_weak_lensing",
@@ -17,6 +19,9 @@ _TRACER_TYPE_MAP = {
 
 def make_pyccl_tracer(cosmo: Any, config: dict[str, Any]) -> Any:
     """Create a pyccl Tracer from a tracer configuration dictionary.
+
+    Nuisance parameters are resolved in priority order:
+    parametric model > functional (z-nodes) > static arrays > None.
 
     Parameters
     ----------
@@ -37,26 +42,43 @@ def _get_dndz(config: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     return np.array(config["dndz_z"]), np.array(config["dndz_nz"])
 
 
-def _get_tuple_or_none(
-    config: dict[str, Any], z_key: str, v_key: str,
+def _resolve_nuisance(
+    config: dict[str, Any],
+    z: np.ndarray,
+    prefix: str,
 ) -> tuple[np.ndarray, np.ndarray] | None:
-    z = config.get(z_key)
-    v = config.get(v_key)
-    if z is not None and v is not None:
-        return np.array(z), np.array(v)
-    return None
+    """Resolve a nuisance function using the priority chain."""
+    static_v_keys = {
+        "bias": "bias_bz",
+        "ia_bias": "ia_bias_az",
+        "mag_bias": "mag_bias_sz",
+    }
+    static_v_key = static_v_keys.get(prefix, f"{prefix}_v")
+
+    return evaluate_nuisance(
+        z,
+        model=config.get(f"{prefix}_model"),
+        params=config.get(f"{prefix}_params"),
+        nodes_z=config.get(f"{prefix}_nodes_z"),
+        nodes_amp=config.get(f"{prefix}_nodes_amp"),
+        static_z=config.get(f"{prefix}_z"),
+        static_values=config.get(static_v_key),
+    )
 
 
 def _make_weak_lensing(cosmo: Any, config: dict[str, Any]) -> Any:
     import pyccl
 
+    dndz = _get_dndz(config)
+    z = dndz[0]
+
     kwargs: dict[str, Any] = {
-        "dndz": _get_dndz(config),
+        "dndz": dndz,
         "has_shear": config.get("has_shear", True),
         "use_A_ia": config.get("use_A_ia", True),
         "n_samples": config.get("n_samples", 256),
     }
-    ia_bias = _get_tuple_or_none(config, "ia_bias_z", "ia_bias_az")
+    ia_bias = _resolve_nuisance(config, z, "ia_bias")
     if ia_bias is not None:
         kwargs["ia_bias"] = ia_bias
     return pyccl.WeakLensingTracer(cosmo, **kwargs)
@@ -65,15 +87,18 @@ def _make_weak_lensing(cosmo: Any, config: dict[str, Any]) -> Any:
 def _make_number_counts(cosmo: Any, config: dict[str, Any]) -> Any:
     import pyccl
 
+    dndz = _get_dndz(config)
+    z = dndz[0]
+
     kwargs: dict[str, Any] = {
-        "dndz": _get_dndz(config),
+        "dndz": dndz,
         "has_rsd": config.get("has_rsd", False),
         "n_samples": config.get("n_samples", 256),
     }
-    bias = _get_tuple_or_none(config, "bias_z", "bias_bz")
+    bias = _resolve_nuisance(config, z, "bias")
     if bias is not None:
         kwargs["bias"] = bias
-    mag_bias = _get_tuple_or_none(config, "mag_bias_z", "mag_bias_sz")
+    mag_bias = _resolve_nuisance(config, z, "mag_bias")
     if mag_bias is not None:
         kwargs["mag_bias"] = mag_bias
     return pyccl.NumberCountsTracer(cosmo, **kwargs)

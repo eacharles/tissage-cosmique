@@ -83,3 +83,27 @@ class TestAngularCl:
     def test_wl_cmb_cross(self):
         cl = angular_cl(PLANCK, WL_CONFIG, CMB_CONFIG, ELL)
         assert cl.shape == ELL.shape
+
+    def test_nc_parametric_bias(self):
+        nc_param = dict(
+            tracer_type="number_counts",
+            dndz_z=Z, dndz_nz=NZ,
+            bias_model="linear",
+            bias_params={"a0": 1.5, "a1": 0.3},
+            has_rsd=False,
+        )
+        cl = angular_cl(PLANCK, nc_param, nc_param, ELL)
+        assert cl.shape == ELL.shape
+        assert np.all(cl >= 0)
+
+    def test_nc_functional_bias(self):
+        nc_func = dict(
+            tracer_type="number_counts",
+            dndz_z=Z, dndz_nz=NZ,
+            bias_nodes_z=[0.0, 0.5, 1.0, 1.5, 2.0],
+            bias_nodes_amp=[1.2, 1.4, 1.6, 1.5, 1.3],
+            has_rsd=False,
+        )
+        cl = angular_cl(PLANCK, nc_func, nc_func, ELL)
+        assert cl.shape == ELL.shape
+        assert np.all(cl >= 0)
