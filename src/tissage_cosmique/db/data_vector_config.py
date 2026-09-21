@@ -21,6 +21,10 @@ class DataVectorConfigTable(Base):
     tracer_names: Mapped[list] = mapped_column(JSON)
     ell: Mapped[list] = mapped_column(JSON)
     include_pairs: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    ell_per_pair: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    bin_edges: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    bin_edges_per_pair: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    bin_weights: Mapped[str] = mapped_column(String(20), default="2ell+1")
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     @classmethod
