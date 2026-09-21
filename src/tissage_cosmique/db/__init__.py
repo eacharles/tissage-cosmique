@@ -2,6 +2,7 @@ from .base import Base, close_db, get_session, init_db
 from .codec_record import CodecRecordTable
 from .cosmology import CosmologyParamsTable
 from .emulator_record import EmulatorRecordTable
+from .tracer_config import TracerConfigTable
 
 __all__ = [
     "Base",
@@ -11,4 +12,5 @@ __all__ = [
     "CosmologyParamsTable",
     "CodecRecordTable",
     "EmulatorRecordTable",
+    "TracerConfigTable",
 ]
