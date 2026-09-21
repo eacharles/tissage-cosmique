@@ -62,6 +62,11 @@ class TracerConfigBase(BaseModel):
     use_A_ia: bool = Field(default=True, description="Use conventional IA normalization")
     z_source: float | None = Field(default=None, description="Source redshift (CMBLensing)")
     n_samples: int = Field(default=256, description="Kernel resolution samples")
+
+    # Survey noise parameters
+    n_gal: float | None = Field(default=None, description="Galaxy number density [arcmin^-2]")
+    sigma_epsilon: float | None = Field(default=None, description="Shape noise RMS (WL only)")
+
     metadata_json: dict[str, Any] | None = Field(default=None, description="Additional metadata")
 
 

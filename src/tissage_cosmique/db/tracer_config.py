@@ -52,6 +52,8 @@ class TracerConfigTable(Base):
     use_A_ia: Mapped[bool] = mapped_column(Boolean, default=True)
     z_source: Mapped[float | None] = mapped_column(Float, nullable=True)
     n_samples: Mapped[int] = mapped_column(Integer, default=256)
+    n_gal: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sigma_epsilon: Mapped[float | None] = mapped_column(Float, nullable=True)
     metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     @classmethod

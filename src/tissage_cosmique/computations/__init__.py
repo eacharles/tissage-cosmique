@@ -1,5 +1,6 @@
 from .angular_cl import angular_cl
 from .cosmology import make_pyccl_cosmology
+from .covariance import compute_covariance_from_data_vector, compute_gaussian_covariance, noise_power
 from .data_vector import DataVectorResult, compute_data_vector, get_data_vector_pairs, make_data_vector_result
 from .distances import comoving_angular_distance
 from .ell_binning import bin_cl, make_linear_bins, make_log_bins, pair_key
@@ -22,4 +23,7 @@ __all__ = [
     "make_log_bins",
     "make_linear_bins",
     "pair_key",
+    "noise_power",
+    "compute_gaussian_covariance",
+    "compute_covariance_from_data_vector",
 ]
