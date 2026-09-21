@@ -32,6 +32,8 @@ dependencies = [
 [project.optional-dependencies]
 pyccl = ["pyccl", "camb"]
 
+sacc = ["sacc"]
+
 emulators = ["scikit-learn", "joblib", "scipy"]
 
 tensorflow = ["tensorflow", "scikit-learn", "joblib"]
