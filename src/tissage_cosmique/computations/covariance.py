@@ -8,10 +8,13 @@ import numpy as np
 
 from .data_vector import (
     DataVectorResult,
+    _resolve_bin_edges_for_pair,
+    _resolve_ell_for_pair,
     compute_data_vector,
+    get_data_vector_pairs,
     make_data_vector_result,
 )
-from .ell_binning import pair_key
+from .ell_binning import bin_cl, pair_key
 
 ARCMIN2_PER_SR = (180.0 * 60.0 / np.pi) ** 2
 
@@ -52,13 +55,16 @@ def _get_cl_with_noise(
     t1: str, t2: str,
     all_cl: dict[str, np.ndarray],
     noise_dict: dict[str, np.ndarray],
+    ell: np.ndarray,
 ) -> np.ndarray:
-    """Get C̃_ij = C_ij + δ_ij * N_i."""
+    """Get C̃_ij(ℓ) = C_ij(ℓ) + δ_ij * N_i(ℓ), evaluated at given ell."""
     key = pair_key(t1, t2)
     key_rev = pair_key(t2, t1)
-    cl: np.ndarray = all_cl.get(key, all_cl.get(key_rev, np.zeros(1)))
+    cl: np.ndarray = all_cl.get(key, all_cl.get(key_rev, np.zeros_like(ell)))
     if t1 == t2:
-        cl = cl + noise_dict.get(t1, np.zeros_like(cl))
+        n = noise_dict.get(t1)
+        if n is not None:
+            cl = cl + n
     return cl
 
 
@@ -67,59 +73,72 @@ def compute_gaussian_covariance(
     noise_dict: dict[str, np.ndarray],
     dv_result: DataVectorResult,
     f_sky: float,
+    dv_config: dict[str, Any],
+    ell_fine: np.ndarray,
 ) -> np.ndarray:
     """Build the full Gaussian covariance matrix for a data vector.
+
+    For binned data vectors, the covariance is computed at each fine ℓ
+    and then averaged into bandpower bins with (2ℓ+1) weighting.
 
     Parameters
     ----------
     all_cl
-        All signal C(ℓ) spectra keyed by ``"t1-t2"``, evaluated at
-        the per-pair ℓ arrays (unbinned).
+        All signal C(ℓ) spectra keyed by ``"t1-t2"``, at ``ell_fine``.
     noise_dict
-        Noise N(ℓ) per tracer name, evaluated at the same ℓ arrays.
+        Noise N(ℓ) per tracer name, at ``ell_fine``.
     dv_result
-        The computed data vector result with pairs, offsets, lengths.
+        The computed data vector result.
     f_sky
         Sky fraction.
-
-    Returns
-    -------
-    np.ndarray
-        Covariance matrix of shape ``(n_dv, n_dv)``.
+    dv_config
+        Data vector configuration (for resolving ℓ ranges and bin edges).
+    ell_fine
+        Fine multipole grid at which all_cl is evaluated.
     """
-    n_dv = len(dv_result.data_vector)
-    cov = np.zeros((n_dv, n_dv))
-
     pairs = dv_result.pairs
     offsets = dv_result.offsets
     lengths = dv_result.lengths
+    n_dv = len(dv_result.data_vector)
+    cov = np.zeros((n_dv, n_dv))
 
     for a_idx, (ti, tj) in enumerate(pairs):
-        ell_a = dv_result.ell_per_pair[pair_key(ti, tj)]
+        ell_a = _resolve_ell_for_pair(ti, tj, dv_config, ell_fine)
+        edges_a = _resolve_bin_edges_for_pair(ti, tj, dv_config)
         n_a = lengths[a_idx]
         off_a = offsets[a_idx]
 
         for b_idx, (tm, tn) in enumerate(pairs):
-            ell_b = dv_result.ell_per_pair[pair_key(tm, tn)]
+            ell_b = _resolve_ell_for_pair(tm, tn, dv_config, ell_fine)
+            edges_b = _resolve_bin_edges_for_pair(tm, tn, dv_config)
             n_b = lengths[b_idx]
             off_b = offsets[b_idx]
 
-            if n_a != n_b:
-                continue
-            if not np.allclose(ell_a, ell_b):
+            if not np.array_equal(ell_a, ell_b):
                 continue
 
             ell = ell_a
-            c_im = _get_cl_with_noise(ti, tm, all_cl, noise_dict)
-            c_jn = _get_cl_with_noise(tj, tn, all_cl, noise_dict)
-            c_in = _get_cl_with_noise(ti, tn, all_cl, noise_dict)
-            c_jm = _get_cl_with_noise(tj, tm, all_cl, noise_dict)
+            c_im = _get_cl_with_noise(ti, tm, all_cl, noise_dict, ell_fine)
+            c_jn = _get_cl_with_noise(tj, tn, all_cl, noise_dict, ell_fine)
+            c_in = _get_cl_with_noise(ti, tn, all_cl, noise_dict, ell_fine)
+            c_jm = _get_cl_with_noise(tj, tm, all_cl, noise_dict, ell_fine)
+
+            ell_mask = np.isin(ell_fine, ell)
+            c_im_pair = c_im[ell_mask] if len(c_im) == len(ell_fine) else c_im
+            c_jn_pair = c_jn[ell_mask] if len(c_jn) == len(ell_fine) else c_jn
+            c_in_pair = c_in[ell_mask] if len(c_in) == len(ell_fine) else c_in
+            c_jm_pair = c_jm[ell_mask] if len(c_jm) == len(ell_fine) else c_jm
 
             prefactor = 1.0 / ((2.0 * ell + 1.0) * f_sky)
-            cov_diag = prefactor * (c_im * c_jn + c_in * c_jm)
+            cov_per_ell = prefactor * (c_im_pair * c_jn_pair + c_in_pair * c_jm_pair)
 
-            for k in range(n_a):
-                cov[off_a + k, off_b + k] = cov_diag[k]
+            if edges_a is not None and edges_b is not None and np.array_equal(edges_a, edges_b):
+                _, cov_binned = bin_cl(ell, cov_per_ell, edges_a, weights="2ell+1")
+                for k in range(n_a):
+                    cov[off_a + k, off_b + k] = cov_binned[k]
+            elif edges_a is None and edges_b is None:
+                for k in range(min(n_a, len(cov_per_ell))):
+                    cov[off_a + k, off_b + k] = cov_per_ell[k]
 
     return cov
 
@@ -145,23 +164,25 @@ def compute_covariance_from_data_vector(
     dv = compute_data_vector(cosmo_params, tracer_configs, dv_config, ell)
     dv_result = make_data_vector_result(dv, dv_config, ell)
 
+    import pyccl
+
+    from .cosmology import make_pyccl_cosmology
+    from .tracers import make_pyccl_tracer
+
+    cosmo = make_pyccl_cosmology(cosmo_params)
+    tracer_names = dv_config["tracer_names"]
+    tracers = {n: make_pyccl_tracer(cosmo, tracer_configs[n]) for n in tracer_names}
+
     all_cl = {}
     noise_dict = {}
-    tracer_names = dv_config["tracer_names"]
     for t1 in tracer_names:
         noise_dict[t1] = noise_power(tracer_configs[t1], ell)
         for t2 in tracer_names:
             key = pair_key(t1, t2)
             if key not in all_cl:
-                import pyccl
+                all_cl[key] = pyccl.angular_cl(cosmo, tracers[t1], tracers[t2], ell)
 
-                from .cosmology import make_pyccl_cosmology
-                from .tracers import make_pyccl_tracer
-
-                cosmo = make_pyccl_cosmology(cosmo_params)
-                tr1 = make_pyccl_tracer(cosmo, tracer_configs[t1])
-                tr2 = make_pyccl_tracer(cosmo, tracer_configs[t2])
-                all_cl[key] = pyccl.angular_cl(cosmo, tr1, tr2, ell)
-
-    covariance = compute_gaussian_covariance(all_cl, noise_dict, dv_result, f_sky)
+    covariance = compute_gaussian_covariance(
+        all_cl, noise_dict, dv_result, f_sky, dv_config, ell,
+    )
     return dv, dv_result, covariance
