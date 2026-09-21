@@ -1,7 +1,7 @@
 import click
 from macon.cli.local.base import make_table_group
 
-from ...local_sync import codec_record, cosmology_params, emulator_record, tracer_config
+from ...local_sync import codec_record, cosmology_params, data_vector_config, emulator_record, tracer_config
 
 
 @click.group()
@@ -13,3 +13,4 @@ cli.add_command(make_table_group("cosmology-params", cosmology_params, "Manage c
 cli.add_command(make_table_group("codec-record", codec_record, "Manage codec records"))
 cli.add_command(make_table_group("emulator-record", emulator_record, "Manage emulator records"))
 cli.add_command(make_table_group("tracer-config", tracer_config, "Manage tracer configurations"))
+cli.add_command(make_table_group("data-vector-config", data_vector_config, "Manage data vector configs"))
