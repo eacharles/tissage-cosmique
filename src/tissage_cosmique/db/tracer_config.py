@@ -23,6 +23,10 @@ class TracerConfigTable(Base):
     # Static arrays
     dndz_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
     dndz_nz: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    dndz_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    dndz_params: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    dndz_basis_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    dndz_basis_amp: Mapped[list | None] = mapped_column(JSON, nullable=True)
     bias_z: Mapped[list | None] = mapped_column(JSON, nullable=True)
     bias_bz: Mapped[list | None] = mapped_column(JSON, nullable=True)
     ia_bias_z: Mapped[list | None] = mapped_column(JSON, nullable=True)

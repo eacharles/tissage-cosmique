@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy as np
 
-from .nuisance import evaluate_nuisance
+from .nuisance import evaluate_nuisance, perturb_dndz
 
 
 _TRACER_TYPE_MAP = {
@@ -39,7 +39,18 @@ def make_pyccl_tracer(cosmo: Any, config: dict[str, Any]) -> Any:
 
 
 def _get_dndz(config: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
-    return np.array(config["dndz_z"]), np.array(config["dndz_nz"])
+    z = np.array(config["dndz_z"])
+    nz = np.array(config["dndz_nz"])
+    dndz_model = config.get("dndz_model")
+    if dndz_model is not None:
+        z, nz = perturb_dndz(
+            z, nz,
+            model=dndz_model,
+            params=config.get("dndz_params"),
+            basis_z=config.get("dndz_basis_z"),
+            basis_amp=config.get("dndz_basis_amp"),
+        )
+    return z, nz
 
 
 def _resolve_nuisance(

@@ -4,7 +4,7 @@ from .covariance import compute_covariance_from_data_vector, compute_gaussian_co
 from .data_vector import DataVectorResult, compute_data_vector, get_data_vector_pairs, make_data_vector_result
 from .distances import comoving_angular_distance
 from .ell_binning import bin_cl, make_linear_bins, make_log_bins, pair_key
-from .nuisance import evaluate_nuisance
+from .nuisance import evaluate_nuisance, perturb_dndz
 from .power import linear_matter_power
 from .tracers import make_pyccl_tracer
 
@@ -26,4 +26,5 @@ __all__ = [
     "noise_power",
     "compute_gaussian_covariance",
     "compute_covariance_from_data_vector",
+    "perturb_dndz",
 ]

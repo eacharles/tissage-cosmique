@@ -17,6 +17,21 @@ class TracerConfigBase(BaseModel):
     # Static (z, f(z)) arrays — used when no parametric/functional model is set
     dndz_z: list[float] | None = Field(default=None, description="Redshift array for dN/dz")
     dndz_nz: list[float] | None = Field(default=None, description="N(z) array for dN/dz")
+
+    # n(z) perturbation models (photo-z uncertainty)
+    dndz_model: str | None = Field(
+        default=None, description="n(z) perturbation: shift, shift_stretch, comb",
+    )
+    dndz_params: dict[str, float] | None = Field(
+        default=None, description="n(z) perturbation params {dz, sigma_z}",
+    )
+    dndz_basis_z: list[float] | None = Field(
+        default=None, description="z-nodes for comb perturbation",
+    )
+    dndz_basis_amp: list[float] | None = Field(
+        default=None, description="Amplitudes for comb perturbation",
+    )
+
     bias_z: list[float] | None = Field(default=None, description="Galaxy bias z array")
     bias_bz: list[float] | None = Field(default=None, description="Galaxy bias b(z) array")
     ia_bias_z: list[float] | None = Field(default=None, description="IA amplitude z array")

@@ -94,3 +94,94 @@ def _evaluate_functional(
         kind="linear", bounds_error=False, fill_value="extrapolate",
     )
     return f(z)
+
+
+def perturb_dndz(
+    z: np.ndarray,
+    nz: np.ndarray,
+    *,
+    model: str | None = None,
+    params: dict[str, float] | None = None,
+    basis_z: list[float] | None = None,
+    basis_amp: list[float] | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Perturb a redshift distribution n(z) to model photo-z uncertainty.
+
+    Parameters
+    ----------
+    z
+        Redshift array.
+    nz
+        n(z) array (will be perturbed and re-normalized).
+    model
+        Perturbation model: ``"shift"``, ``"shift_stretch"``, or ``"comb"``.
+    params
+        Model parameters. For ``"shift"``: ``{"dz": float}``.
+        For ``"shift_stretch"``: ``{"dz": float, "sigma_z": float}``.
+    basis_z
+        Z-nodes for ``"comb"`` perturbation.
+    basis_amp
+        Amplitudes at z-nodes for ``"comb"`` perturbation.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Perturbed ``(z, nz)`` with preserved normalization.
+    """
+    if model is None:
+        return z, nz
+
+    if params is None:
+        params = {}
+
+    if model == "shift":
+        nz_new = _perturb_shift(z, nz, params.get("dz", 0.0))
+    elif model == "shift_stretch":
+        nz_new = _perturb_shift_stretch(
+            z, nz, params.get("dz", 0.0), params.get("sigma_z", 1.0),
+        )
+    elif model == "comb":
+        if basis_z is None or basis_amp is None:
+            return z, nz
+        nz_new = _perturb_comb(z, nz, basis_z, basis_amp)
+    else:
+        raise ValueError(f"Unknown dndz perturbation model: {model}")
+
+    nz_new = np.maximum(nz_new, 0.0)
+    norm = np.trapezoid(nz_new, z)
+    if norm > 0:
+        orig_norm = np.trapezoid(nz, z)
+        nz_new = nz_new * (orig_norm / norm)
+
+    return z, nz_new
+
+
+def _perturb_shift(
+    z: np.ndarray, nz: np.ndarray, dz: float,
+) -> np.ndarray:
+    """Shift n(z) by Δz: n(z) → n(z - Δz)."""
+    f = interp1d(z, nz, kind="linear", bounds_error=False, fill_value=0.0)
+    return f(z - dz)
+
+
+def _perturb_shift_stretch(
+    z: np.ndarray, nz: np.ndarray, dz: float, sigma_z: float,
+) -> np.ndarray:
+    """Shift and stretch n(z): n(z) → n((z - Δz) / σ_z)."""
+    z_mean = np.average(z, weights=np.maximum(nz, 0.0) + 1e-30)
+    z_transformed = z_mean + (z - z_mean - dz) / sigma_z
+    f = interp1d(z, nz, kind="linear", bounds_error=False, fill_value=0.0)
+    return f(z_transformed)
+
+
+def _perturb_comb(
+    z: np.ndarray, nz: np.ndarray,
+    basis_z: list[float], basis_amp: list[float],
+) -> np.ndarray:
+    """Multiplicative comb perturbation: n(z) → n(z) * (1 + Σ a_k φ_k(z))."""
+    f = interp1d(
+        basis_z, basis_amp,
+        kind="linear", bounds_error=False, fill_value=0.0,
+    )
+    perturbation = 1.0 + f(z)
+    return nz * perturbation

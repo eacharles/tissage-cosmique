@@ -11,7 +11,6 @@ from .data_vector import (
     _resolve_bin_edges_for_pair,
     _resolve_ell_for_pair,
     compute_data_vector,
-    get_data_vector_pairs,
     make_data_vector_result,
 )
 from .ell_binning import bin_cl, pair_key
@@ -111,7 +110,6 @@ def compute_gaussian_covariance(
         for b_idx, (tm, tn) in enumerate(pairs):
             ell_b = _resolve_ell_for_pair(tm, tn, dv_config, ell_fine)
             edges_b = _resolve_bin_edges_for_pair(tm, tn, dv_config)
-            n_b = lengths[b_idx]
             off_b = offsets[b_idx]
 
             if not np.array_equal(ell_a, ell_b):
