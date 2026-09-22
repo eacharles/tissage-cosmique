@@ -44,6 +44,8 @@ symbolic = ["pysr", "scikit-learn", "joblib"]
 
 dashboard = ["dash", "plotly", "pandas"]
 
+cobaya = ["cobaya"]
+
 server = [
     "macon[server]",
 ]
