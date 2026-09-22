@@ -8,7 +8,7 @@ from .distances import comoving_angular_distance
 from .ell_binning import bin_cl, make_linear_bins, make_log_bins, pair_key
 from .nuisance import evaluate_nuisance, perturb_dndz
 from .power import linear_matter_power
-from .sacc_io import build_sacc, save_sacc
+from .sacc_io import build_sacc, load_sacc, load_sacc_to_db, save_sacc
 from .tracers import make_pyccl_tracer
 
 __all__ = [
@@ -36,4 +36,6 @@ __all__ = [
     "FisherResult",
     "build_sacc",
     "save_sacc",
+    "load_sacc",
+    "load_sacc_to_db",
 ]
