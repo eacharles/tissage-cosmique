@@ -202,7 +202,7 @@ strict_equality = true
 warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_ignores = true
-plugins = ["sqlalchemy.ext.mypy.plugin", "pydantic.mypy"]
+plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = "tissage_cosmique.dashboard.*"
