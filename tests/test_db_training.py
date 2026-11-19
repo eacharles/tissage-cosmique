@@ -35,13 +35,16 @@ class TestRunTrackedBatch:
         assert len(exec_ids) == 3
 
     def test_executions_stored_in_db(self):
-        from tisserande.local_sync import execution
+        from macon.models.filtering import Filter, FilterOp
+        from tisserande.local_sync import node as node_ops
 
         rng = np.random.default_rng(42)
         samples = _make_param_samples(3, rng)
         run_tracked_batch(comoving_angular_distance, samples, A_GRID)
-        execs = execution.get_rows()
-        assert len(execs) >= 3
+        func_nodes = node_ops.filter_rows(
+            [Filter(field="node_type", op=FilterOp.EQ, value="python_function_call")]
+        )
+        assert len(func_nodes) >= 3
 
 
 class TestQueryComputationResults:

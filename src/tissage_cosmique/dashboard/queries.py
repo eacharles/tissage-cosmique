@@ -38,34 +38,44 @@ def get_codec_records() -> pd.DataFrame:
 
 
 def get_executions() -> pd.DataFrame:
-    """Query all tisserande Execution records."""
-    from tisserande.local_sync import execution
+    """Query all tisserande function call records (PythonFunctionCall nodes)."""
+    from macon.models.filtering import Filter, FilterOp
+    from tisserande.local_sync import node as node_ops
 
-    rows = execution.get_rows()
+    rows = node_ops.filter_rows([Filter(field="node_type", op=FilterOp.EQ, value="python_function_call")])
     if not rows:
         return pd.DataFrame()
     data = []
     for r in rows:
-        d = _dump(r)
-        if hasattr(r.status, "value"):
-            d["status"] = r.status.value
+        d: dict = {"uid_": str(r.uid_), "node_type": r.node_type.value}
+        if hasattr(r, "status"):
+            d["status"] = r.status.value if hasattr(r.status, "value") else str(r.status)
+        if hasattr(r, "start_time"):
+            d["start_time"] = r.start_time
+        if hasattr(r, "end_time"):
+            d["end_time"] = r.end_time
         data.append(d)
     return pd.DataFrame(data)
 
 
-def get_nodes_for_execution(exec_id: UUID) -> pd.DataFrame:
-    """Query all nodes for a given execution."""
-    from tisserande.local_sync import node
+def get_nodes_for_execution(func_node_uid: UUID) -> pd.DataFrame:
+    """Query the function call node and all data nodes connected to it."""
+    from macon.models.filtering import Filter, FilterOp
+    from tisserande.local_sync import edge as edge_ops
+    from tisserande.local_sync import node as node_ops
 
-    rows = node.find_by(execution_id=exec_id)
-    if not rows:
+    input_edges = edge_ops.filter_rows([Filter(field="to_id", op=FilterOp.EQ, value=func_node_uid)])
+    output_edges = edge_ops.filter_rows([Filter(field="from_id", op=FilterOp.EQ, value=func_node_uid)])
+
+    all_node_ids = {e.from_id for e in input_edges} | {e.to_id for e in output_edges} | {func_node_uid}
+    all_nodes = [node_ops.get_row(nid) for nid in all_node_ids]
+
+    if not all_nodes:
         return pd.DataFrame()
     data = []
-    for r in rows:
-        d = {
-            "id_": str(r.id_), "type_": str(r.type_),
-            "arg_name": r.arg_name, "execution_id": str(r.execution_id),
-        }
+    for r in all_nodes:
+        ntype = r.node_type.value if hasattr(r.node_type, "value") else str(r.node_type)
+        d: dict = {"uid_": str(r.uid_), "node_type": ntype}
         if hasattr(r, "config_data") and r.config_data:
             d["value"] = str(r.config_data)[:100]
         elif hasattr(r, "value_json") and r.value_json is not None:
@@ -77,14 +87,18 @@ def get_nodes_for_execution(exec_id: UUID) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-def get_edges_for_execution(exec_id: UUID) -> pd.DataFrame:
-    """Query all edges for a given execution."""
-    from tisserande.local_sync import edge
+def get_edges_for_execution(func_node_uid: UUID) -> pd.DataFrame:
+    """Query all edges connected to a function call node."""
+    from macon.models.filtering import Filter, FilterOp
+    from tisserande.local_sync import edge as edge_ops
 
-    rows = edge.find_by(execution_id=exec_id)
-    if not rows:
+    input_edges = edge_ops.filter_rows([Filter(field="to_id", op=FilterOp.EQ, value=func_node_uid)])
+    output_edges = edge_ops.filter_rows([Filter(field="from_id", op=FilterOp.EQ, value=func_node_uid)])
+
+    all_edges = input_edges + output_edges
+    if not all_edges:
         return pd.DataFrame()
-    return pd.DataFrame([{"id_": r.id_, "from_id": str(r.from_id), "to_id": str(r.to_id)} for r in rows])
+    return pd.DataFrame([{"id_": r.id_, "from_id": str(r.from_id), "to_id": str(r.to_id)} for r in all_edges])
 
 
 def _dump(row: object) -> dict:

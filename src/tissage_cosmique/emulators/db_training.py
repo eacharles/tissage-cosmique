@@ -10,6 +10,10 @@ import numpy as np
 from macon.common import unexpected
 from macon.models.filtering import Filter, FilterOp
 
+_PYTHON_FUNCTION_CALL = "python_function_call"
+_CONFIG_DICT = "config_dict"
+_ARRAY = "array"
+
 
 def run_tracked_batch(
     computation_fn: Callable[..., np.ndarray],
@@ -38,7 +42,7 @@ def run_tracked_batch(
     Returns
     -------
     list[UUID]
-        Execution IDs for each computation run.
+        Function call node UIDs for each computation run.
     """
     from tisserande.tracking.backends import LocalSyncBackend
     from tisserande.tracking.decorator import configure, get_backend
@@ -46,14 +50,16 @@ def run_tracked_batch(
     if get_backend() is None:
         configure(db_url=db_url) if db_url is not None else configure(backend=LocalSyncBackend())
 
-    from tisserande.local_sync import execution as exec_ops
+    from tisserande.local_sync import node as node_ops
 
-    initial_count = exec_ops.count_rows()
+    _func_call_filter = [Filter(field="node_type", op=FilterOp.EQ, value=_PYTHON_FUNCTION_CALL)]
+    initial_count = len(node_ops.filter_rows(_func_call_filter))
+
     for params in param_samples:
         computation_fn(params, a_grid)
 
-    all_execs = exec_ops.get_rows()
-    return [e.id_ for e in all_execs[initial_count:]]
+    all_func_nodes = node_ops.filter_rows(_func_call_filter)
+    return [n.uid_ for n in all_func_nodes[initial_count:]]
 
 
 def query_computation_results(
@@ -62,10 +68,9 @@ def query_computation_results(
     """Query stored computation results and build (X, y) training pairs.
 
     Reconstructs training data from tisserande's provenance graph: for each
-    successful execution, extracts the input cosmological parameters (from
-    ``config_dict`` nodes) and scale factors (from ``array`` nodes with
-    ``arg_name='a'``), along with the output distances (from ``array`` nodes
-    with ``arg_name='return'``).
+    successful function call node, extracts the input cosmological parameters
+    (from ``config_dict`` input nodes) and scale factors (from ``array`` input
+    nodes), along with the output distances (from ``array`` output nodes).
 
     Parameters
     ----------
@@ -81,27 +86,22 @@ def query_computation_results(
         Target array of shape ``(n_total,)``.
     """
     from tisserande.local_sync import edge as edge_ops
-    from tisserande.local_sync import execution as exec_ops
     from tisserande.local_sync import node as node_ops
 
-    execs = exec_ops.filter_rows(
-        [Filter(field="status", op=FilterOp.EQ, value="success")],
+    func_nodes = node_ops.filter_rows(
+        [Filter(field="node_type", op=FilterOp.EQ, value=_PYTHON_FUNCTION_CALL)],
     )
+    successful = [n for n in func_nodes if hasattr(n, "status") and n.status.value == "success"]
 
     X_rows: list[list[float]] = []
     y_values: list[float] = []
 
-    for exec_rec in execs:
-        if unexpected(exec_rec.function_node_id is None):
-            continue
-
+    for func_node in successful:
         input_edges = edge_ops.filter_rows([
-            Filter(field="to_id", op=FilterOp.EQ, value=exec_rec.function_node_id),
-            Filter(field="execution_id", op=FilterOp.EQ, value=exec_rec.id_),
+            Filter(field="to_id", op=FilterOp.EQ, value=func_node.uid_),
         ])
         output_edges = edge_ops.filter_rows([
-            Filter(field="from_id", op=FilterOp.EQ, value=exec_rec.function_node_id),
-            Filter(field="execution_id", op=FilterOp.EQ, value=exec_rec.id_),
+            Filter(field="from_id", op=FilterOp.EQ, value=func_node.uid_),
         ])
 
         input_nodes = [node_ops.get_row(e.from_id) for e in input_edges]
@@ -112,13 +112,15 @@ def query_computation_results(
         result_array: list[float] | None = None
 
         for n in input_nodes:
-            if n.arg_name == "cosmo_params" and hasattr(n, "config_data"):
+            ntype = n.node_type.value if hasattr(n.node_type, "value") else str(n.node_type)
+            if ntype == _CONFIG_DICT and hasattr(n, "config_data"):
                 cosmo_params = n.config_data
-            elif n.arg_name == "a" and hasattr(n, "value_json"):
+            elif ntype == _ARRAY and hasattr(n, "value_json"):
                 a_array = n.value_json
 
         for n in output_nodes:
-            if n.arg_name == "return" and hasattr(n, "value_json"):
+            ntype = n.node_type.value if hasattr(n.node_type, "value") else str(n.node_type)
+            if ntype == _ARRAY and hasattr(n, "value_json"):
                 result_array = n.value_json
 
         if unexpected(cosmo_params is None or a_array is None or result_array is None):
